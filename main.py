@@ -143,7 +143,7 @@ class FlashCardApp:
       checkboxes = [ui.checkbox(c).classes('text-base') for c in choices]
       get_selected = lambda: [cb.text for cb in checkboxes if cb.value]
     else:
-      radio = ui.radio(choices, value=None).props('dense').classes('text-base')
+      radio = ui.radio(choices, value=None).classes('text-base')
       get_selected = lambda: [radio.value] if radio.value else []
 
     # Buttons row
@@ -166,12 +166,12 @@ class FlashCardApp:
     ):
       with ui.column().classes('gap-1'):
         status_label = ui.label('').classes('text-xl font-bold')
-        ans_title = ui.label('Correct answer(s):').classes(
+        answer_title = ui.label('Correct answer(s):').classes(
           'text-sm text-gray-400 hidden'
         )
         ans_labels = [
-          ui.label(f'• {ans}').classes('ml-3 text-sm text-gray-200 hidden')
-          for ans in correct_answers
+          ui.label(f'{answer}').classes('ml-3 text-sm text-gray-200 hidden')
+          for answer in correct_answers
         ]
       progress_label = ui.label(
         f'✅ {len(self.correct_indices)} / {len(self.flash_cards)}'
@@ -197,7 +197,7 @@ class FlashCardApp:
       progress_label.set_text(
         f'✅ {len(self.correct_indices)} / {len(self.flash_cards)}'
       )
-      ans_title.classes(remove='hidden')
+      answer_title.classes(remove='hidden')
       for lbl in ans_labels:
         lbl.classes(remove='hidden')
 
@@ -277,7 +277,7 @@ class FlashCardApp:
 @ui.page('/')
 def index():
   ui.query('body').classes('bg-gray-900')
-  with ui.card().classes('max-w-3xl mx-auto mt-10 p-8 shadow-xl rounded-2xl'):
+  with ui.card().classes('max-w-5xl mx-auto mt-10 p-8 shadow-xl rounded-2xl'):
     app.root = ui.column().classes('w-full')
     app._render_menu()
 
