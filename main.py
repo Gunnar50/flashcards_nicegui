@@ -6,8 +6,8 @@ import random
 from nicegui import ui
 import pydantic
 
-PROGRESS_FILE = 'progress.json'
-EXAMS_DIR = 'exams'
+PROGRESS_FILE = 'data/progress.json'
+EXAMS_DIR = 'data/exams'
 
 
 class Card(pydantic.BaseModel):
@@ -53,7 +53,7 @@ def load_exam(test_name: str) -> list[Card]:
 class FlashCardApp:
   def __init__(self):
     self.test_name: str = ''
-    self.flash_cards: list[dict] = []  # [{'index': int, 'card': Card}]
+    self.flash_cards: list[dict] = []
     self.correct_indices: set[int] = set()
     self.last_is_correct = False
     self.root: ui.element
@@ -102,7 +102,7 @@ class FlashCardApp:
     correct = {card.options[i] for i in card.answers}
     return set(selected) == correct
 
-  def _place_card_back(self, is_correct: bool):
+  def _place_card_back(self, is_correct: bool) -> None:
     card = self.flash_cards.pop()
     num_cards = len(self.flash_cards)
     if is_correct:
@@ -125,63 +125,108 @@ class FlashCardApp:
     idx = self.current['index']
     choices = card.options[:]
     random.shuffle(choices)
-    correct_answers = [card.options[i] for i in card.answers]
+    correct_answers = {card.options[i] for i in card.answers}
     is_multi = len(card.answers) > 1
 
-    # Back to menu
+    # Header row
     with ui.row().classes('w-full justify-between items-center mb-4'):
-      ui.label(self.test_name).classes('text-lg font-bold text-gray-300')
+      ui.label(self.test_name).classes(
+        'text-md md:text-lg font-bold text-gray-300 truncate'
+      )
       ui.button('← Menu', on_click=self._render_menu).props('flat dense')
 
     # Question
-    ui.label(card.question).classes(
-      'text-lg font-semibold whitespace-pre-wrap mb-4'
+    ui.html(card.question).classes(
+      'text-md md:text-lg font-semibold whitespace-pre-wrap mb-4'
     )
 
     # Options
     if is_multi:
-      checkboxes = [ui.checkbox(c).classes('text-base') for c in choices]
-      get_selected = lambda: [cb.text for cb in checkboxes if cb.value]
+      # Each checkbox gets a wrapper row so we can colour it after submit
+      option_rows: list[tuple[str, ui.row, ui.checkbox]] = []
+      for c in choices:
+        with ui.row().classes('w-full px-2 rounded-lg') as row:
+          cb = ui.checkbox(c).classes('items-start text-md md:text-base')
+        option_rows.append((c, row, cb))
+      get_selected = lambda: [cb.text for _, _, cb in option_rows if cb.value]
+
+      def colour_checkboxes(selected_set: set[str]) -> None:
+        for opt, row, _ in option_rows:
+          is_ans = opt in correct_answers
+          was_chosen = opt in selected_set
+          if is_ans and was_chosen:
+            row.classes(add='bg-green-900 outline outline-1 outline-green-600')
+          elif is_ans and not was_chosen:
+            # Correct but missed — show faint green
+            row.classes(
+              add='bg-green-900 outline outline-1 outline-green-600 opacity-60'
+            )
+          elif not is_ans and was_chosen:
+            row.classes(add='bg-red-900 outline outline-1 outline-red-600')
     else:
-      radio = ui.radio(choices, value=None).classes('text-base')
+      radio = ui.radio(choices, value=None).classes('text-sm md:text-base')
+      ui.add_css(f'#{radio.html_id} > div {{ margin-top: 4px; }}')
       get_selected = lambda: [radio.value] if radio.value else []
 
-    # Buttons row
+      def colour_radio(selected_set: set[str], correct_set: set[str]):
+        for i, opt in enumerate(choices):
+          if opt in correct_set:
+            ui.add_css(
+              f'#{radio.html_id} > div:nth-child({i + 1})'
+              f'{{ background:rgba(20,83,45,0.5); outline:1px solid #16a34a; border-radius:8px; }}'
+            )
+          elif opt in selected_set:
+            ui.add_css(
+              f'#{radio.html_id} > div:nth-child({i + 1})'
+              f'{{ background:rgba(127,29,29,0.5); outline:1px solid #dc2626; border-radius:8px; }}'
+            )
+
+    # Buttons
     with ui.row().classes('mt-5 gap-3'):
       submit_btn = ui.button('Check Answer').classes(
-        'text-black text-base px-5 py-2'
+        'text-md md:text-base px-4 py-2'
       )
       next_btn = (
         ui.button('Next Card →')
         .props('outline')
-        .classes('text-base px-5 py-2 hidden')
+        .classes('text-md md:text-base px-4 py-2 hidden')
       )
 
     ui.separator().classes('my-4')
 
-    # Fixed-height result panel (always rendered, filled on submit)
+    # Result panel
     with ui.row().classes(
-      'w-full items-start justify-between px-4 py-3 rounded-xl'
-      ' bg-gray-800 min-h-[80px]'
+      'w-full items-start justify-between px-4 py-3 rounded-xl bg-gray-800 min-h-[80px]'
     ):
-      with ui.column().classes('gap-1'):
-        status_label = ui.label('').classes('text-xl font-bold')
+      with ui.column().classes('gap-1 flex-1'):
+        status_label = ui.label('').classes('text-base md:text-xl font-bold')
         answer_title = ui.label('Correct answer(s):').classes(
-          'text-sm text-gray-400 hidden'
+          'text-sm md:text-md text-gray-400 hidden'
         )
         ans_labels = [
-          ui.label(f'{answer}').classes('ml-3 text-sm text-gray-200 hidden')
+          ui.label(f'{answer}').classes(
+            'ml-3 text-sm md:text-md text-gray-200 hidden'
+          )
           for answer in correct_answers
         ]
       progress_label = ui.label(
         f'✅ {len(self.correct_indices)} / {len(self.flash_cards)}'
-      ).classes('text-base text-gray-400 font-medium whitespace-nowrap mt-1')
+      ).classes(
+        'text-sm md:text-base text-gray-400 font-medium whitespace-nowrap mt-1'
+      )
 
     # Callbacks
     def on_submit():
       selected = get_selected()
+      selected_set = set(selected)
       is_correct = self._check_answer(selected)
       self.last_is_correct = is_correct
+
+      # Colour options (checkboxes only)
+      if is_multi:
+        colour_checkboxes(selected_set)
+      else:
+        colour_radio(selected_set, correct_answers)
 
       if is_correct:
         self.correct_indices.add(idx)
@@ -203,10 +248,10 @@ class FlashCardApp:
 
       submit_btn.set_visibility(False)
       next_btn.classes(remove='hidden')
+      self._place_card_back(self.last_is_correct)
       self._save()
 
     def on_next():
-      self._place_card_back(self.last_is_correct)
       self.root.clear()
       with self.root:
         self._render_quiz()
@@ -232,28 +277,32 @@ class FlashCardApp:
         has_progress = bool(saved)
 
         with ui.card().classes('w-full mb-4 p-4 bg-gray-800 rounded-xl'):
-          with ui.row().classes('w-full items-center justify-between'):
+          with ui.row().classes(
+            'w-full items-center justify-between flex-wrap gap-2'
+          ):
             with ui.column().classes('gap-0.5'):
-              ui.label(test_name).classes('text-base font-semibold')
+              ui.label(test_name).classes('text-sm md:text-base font-semibold')
               if has_progress:
                 n_correct = len(saved['correct_order'])
                 n_total = len(saved['card_order'])
                 ui.label(f'Progress: ✅ {n_correct} / {n_total}').classes(
-                  'text-sm text-gray-400'
+                  'text-sm md:text-md text-gray-400'
                 )
               else:
-                ui.label('No saved progress').classes('text-sm text-gray-500')
+                ui.label('No saved progress').classes(
+                  'text-sm md:text-md text-gray-500'
+                )
 
             with ui.row().classes('gap-2'):
               if has_progress:
                 ui.button(
                   'Resume',
                   on_click=lambda t=test_name: self.start(t, fresh=False),
-                ).props('outline').classes('text-sm')
+                ).props('outline').classes('text-sm md:text-md')
               ui.button(
                 'Start New',
                 on_click=lambda t=test_name: self._confirm_new(t, has_progress),
-              ).classes('text-sm')
+              ).classes('text-sm md:text-md')
 
   def _confirm_new(self, test_name: str, warn: bool):
     if not warn:
@@ -277,7 +326,9 @@ class FlashCardApp:
 @ui.page('/')
 def index():
   ui.query('body').classes('bg-gray-900')
-  with ui.card().classes('max-w-5xl mx-auto mt-10 p-8 shadow-xl rounded-2xl'):
+  with ui.card().classes(
+    'w-full max-w-6xl mx-auto p-4 md:p-8 shadow-xl rounded-2xl'
+  ):
     app.root = ui.column().classes('w-full')
     app._render_menu()
 

@@ -1,0 +1,40 @@
+[
+  {
+    "question": "Whats the capital of France?",
+    "options": [
+      "Paris",
+      "London",
+      "New York",
+      "Berlin"
+    ],
+    "answers": [
+      0
+    ]
+  },
+  {
+    "question": "What comes after 10?",
+    "options": [
+      "11",
+      "9",
+      "8",
+      "12"
+    ],
+    "answers": [
+      0,
+      3
+    ]
+  },
+  {
+    "question": "You have a web application deployed as a managed instance group based on an instance template. You modified the startup script used in the instance template and would like the existing instances to pick up changes from the new startup scripts. Your web application is currently serving live web traffic. You want to propagate the startup script changes to all instances in the managed instances group while minimizing effort, minimizing cost and ensuring that the available capacity does not decrease. What would you do?",
+    "options": [
+      "Delete instances in the managed instance group (MIG) one at a time and rely on auto-healing to provision an additional instance.",
+      "Perform a&nbsp;rolling-action replace&nbsp;with&nbsp;max-unavailable&nbsp;set to 0 and&nbsp;max-surge&nbsp;set to 1",
+      "Create a new managed instance group (MIG) based on a new template. Add the group to the backend service for the load balancer. When all instances in the new managed instance group are healthy, delete the old managed instance group",
+      "Perform a&nbsp;rolling-action start-update&nbsp;with&nbsp;max-unavailable&nbsp;set to 1 and&nbsp;max-surge&nbsp;set to 0"
+    ],
+    "answers": [
+      1,
+      2
+    ]
+  }
+]
