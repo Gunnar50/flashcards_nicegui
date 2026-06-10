@@ -146,39 +146,49 @@ class FlashCardApp:
       option_rows: list[tuple[str, ui.row, ui.checkbox]] = []
       for c in choices:
         with ui.row().classes('w-full px-2 rounded-lg') as row:
-          cb = ui.checkbox(c).classes('items-start text-md md:text-base')
+          cb = ui.checkbox(c).classes('text-md md:text-base')
+          ui.add_css(
+            f'#{cb.html_id} {{ width:100%; margin-top:-10px; padding:6px; border:1px solid #505050; border-radius:8px; }}'
+          )
         option_rows.append((c, row, cb))
       get_selected = lambda: [cb.text for _, _, cb in option_rows if cb.value]
 
       def colour_checkboxes(selected_set: set[str]) -> None:
-        for opt, row, _ in option_rows:
+        for opt, row, cb in option_rows:
           is_ans = opt in correct_answers
           was_chosen = opt in selected_set
           if is_ans and was_chosen:
-            row.classes(add='bg-green-900 outline outline-1 outline-green-600')
+            ui.add_css(
+              f'#{cb.html_id} {{ background:rgba(20,83,45,0.5); border-color:#16a34a; }}'
+            )
           elif is_ans and not was_chosen:
-            # Correct but missed — show faint green
-            row.classes(
-              add='bg-green-900 outline outline-1 outline-green-600 opacity-60'
+            ui.add_css(
+              f'#{cb.html_id} {{ background:rgba(20,83,45,0.5); border-color:#16a34a; opacity:0.6; }}'
             )
           elif not is_ans and was_chosen:
-            row.classes(add='bg-red-900 outline outline-1 outline-red-600')
+            ui.add_css(
+              f'#{cb.html_id} {{ background:rgba(127,29,29,0.5); border-color:#dc2626; }}'
+            )
     else:
-      radio = ui.radio(choices, value=None).classes('text-sm md:text-base')
-      ui.add_css(f'#{radio.html_id} > div {{ margin-top: 4px; }}')
+      radio = ui.radio(choices, value=None).classes(
+        'w-full text-sm md:text-base'
+      )
+      ui.add_css(
+        f'#{radio.html_id} > div > div {{ width:100%; margin-top: 6px; padding:6px; border:1px solid #505050; border-radius:8px; }}'
+      )
       get_selected = lambda: [radio.value] if radio.value else []
 
       def colour_radio(selected_set: set[str], correct_set: set[str]):
         for i, opt in enumerate(choices):
           if opt in correct_set:
             ui.add_css(
-              f'#{radio.html_id} > div:nth-child({i + 1})'
-              f'{{ background:rgba(20,83,45,0.5); outline:1px solid #16a34a; border-radius:8px; }}'
+              f'#{radio.html_id} > div:nth-child({i + 1}) > div'
+              f'{{ background:rgba(20,83,45,0.5); border-color:#16a34a; }}'
             )
           elif opt in selected_set:
             ui.add_css(
-              f'#{radio.html_id} > div:nth-child({i + 1})'
-              f'{{ background:rgba(127,29,29,0.5); outline:1px solid #dc2626; border-radius:8px; }}'
+              f'#{radio.html_id} > div:nth-child({i + 1}) > div'
+              f'{{ background:rgba(127,29,29,0.5); border-color:#dc2626; }}'
             )
 
     # Buttons
