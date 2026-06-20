@@ -20,9 +20,19 @@ class Card(pydantic.BaseModel):
 def load_progress() -> dict:
   try:
     with open(PROGRESS_FILE) as f:
-      return json.load(f)
+      data = json.load(f)
+      # migrate old flat format
+      if 'exams' not in data:
+        data = {'exams': data, 'current': None}
+      return data
   except FileNotFoundError:
-    return {}
+    return {'exams': {}, 'current': None}
+
+
+def _write_progress(data: dict) -> None:
+  os.makedirs(os.path.dirname(PROGRESS_FILE), exist_ok=True)
+  with open(PROGRESS_FILE, 'w') as f:
+    json.dump(data, f)
 
 
 def save_progress(
@@ -31,12 +41,21 @@ def save_progress(
   correct_order: list[int],
 ) -> None:
   data = load_progress()
-  data[test_name] = {
+  data['exams'][test_name] = {
     'card_order': card_order,
     'correct_order': correct_order,
   }
-  with open(PROGRESS_FILE, 'w') as f:
-    json.dump(data, f)
+  _write_progress(data)
+
+
+def set_current_exam(test_name: str | None = None) -> None:
+  data = load_progress()
+  data['current'] = test_name
+  _write_progress(data)
+
+
+def get_current_exam() -> dict | None:
+  return load_progress().get('current')
 
 
 def get_exam_files() -> list[str]:
@@ -66,7 +85,7 @@ class FlashCardApp:
     ]
 
     progress = load_progress()
-    saved = progress.get(test_name)
+    saved = progress['exams'].get(test_name)
 
     if not fresh and saved:
       index_map = {card['index']: card for card in ordered}
@@ -81,6 +100,7 @@ class FlashCardApp:
       # Immediately wipe any old progress for this test
       save_progress(test_name, [card['index'] for card in self.flash_cards], [])
 
+    set_current_exam(test_name)
     self.root.clear()
     with self.root:
       self._render_quiz()
@@ -271,6 +291,7 @@ class FlashCardApp:
 
   # Menu UI
   def _render_menu(self):
+    set_current_exam()
     self.root.clear()
     with self.root:
       progress = load_progress()
@@ -283,7 +304,7 @@ class FlashCardApp:
         return
 
       for test_name in exams:
-        saved = progress.get(test_name)
+        saved = progress['exams'].get(test_name)
         has_progress = bool(saved)
 
         with ui.card().classes('w-full mb-4 p-4 bg-gray-800 rounded-xl'):
@@ -340,7 +361,11 @@ def index():
     'w-full max-w-6xl mx-auto p-4 md:p-8 shadow-xl rounded-2xl'
   ):
     app.root = ui.column().classes('w-full')
-    app._render_menu()
+    current = get_current_exam()
+    if current and current in get_exam_files():
+      app.start(current, fresh=False)
+    else:
+      app._render_menu()
 
 
 app = FlashCardApp()
