@@ -1,1 +1,3 @@
 data/progress.json
+data/exams/*
+!data/exams/example_test.json
